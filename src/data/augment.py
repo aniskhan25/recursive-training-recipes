@@ -37,3 +37,12 @@ def cifar_strong() -> transforms.Compose:
         transforms.RandAugment(num_ops=2, magnitude=9),
         transforms.ToTensor(),
     ])
+
+
+class TwoCropsTransform:
+    def __init__(self, weak: transforms.Compose, strong: transforms.Compose) -> None:
+        self.weak = weak
+        self.strong = strong
+
+    def __call__(self, x):
+        return self.weak(x), self.strong(x)
