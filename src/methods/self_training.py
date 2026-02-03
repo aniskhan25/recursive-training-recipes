@@ -51,7 +51,7 @@ def run_self_training(
         confidences = []
         with torch.no_grad():
             for images, labels in unlabeled_eval:
-                images = images.to(device)
+                images, labels = images.to(device), labels.to(device)
                 logits = model(images)
                 probs = torch.softmax(logits, dim=1)
                 conf, pred = torch.max(probs, dim=1)
@@ -59,7 +59,7 @@ def run_self_training(
                 if mask.any():
                     pseudo_images.append(images[mask].cpu())
                     pseudo_targets.append(pred[mask].cpu())
-                    pseudo_truth.append(labels[mask])
+                    pseudo_truth.append(labels[mask].cpu())
                     confidences.append(conf[mask].cpu())
                 if sum(x.size(0) for x in pseudo_images) >= max_unlabeled_per_round:
                     break
