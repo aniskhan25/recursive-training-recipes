@@ -1,0 +1,23 @@
+seed: 0
+experiment: hybrid_teacher_threshold
+output_dir: outputs
+
+data:
+  dataset: cifar10
+  data_dir: data
+  labeled_per_class: 40
+  batch_size: 128
+  num_workers: 2
+
+model:
+  name: resnet18
+
+train:
+  epochs: 10
+  lr: 0.03
+  weight_decay: 0.0005
+  ema_decay: 0.99
+  tau: 0.95
+  lambda_u: 1.0
+  rampup_epochs: 5
+  log_every: 1

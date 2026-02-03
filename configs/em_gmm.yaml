@@ -1,0 +1,21 @@
+seed: 0
+experiment: em_gmm_overlap
+output_dir: outputs
+
+data:
+  type: gmm
+  n_samples: 2000
+  dim: 2
+  means:
+    - [0.0, 0.0]
+    - [1.5, 1.5]
+  cov_scale: 1.0
+  overlap: 0.6
+
+em:
+  n_components: 2
+  iters: 12
+  init_means:
+    - [-0.5, -0.5]
+    - [2.0, 2.0]
+  sigma: 1.2

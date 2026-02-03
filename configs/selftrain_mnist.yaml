@@ -1,0 +1,24 @@
+seed: 0
+experiment: selftrain_mnist
+output_dir: outputs
+
+data:
+  dataset: mnist
+  data_dir: data
+  labeled_per_class: 50
+  batch_size: 128
+  num_workers: 2
+
+model:
+  name: small_cnn
+  dropout: 0.1
+
+train:
+  epochs: 5
+  rounds: 4
+  lr: 0.001
+  weight_decay: 0.0005
+  threshold: 0.0
+  use_soft: false
+  max_unlabeled_per_round: 20000
+  log_every: 1
