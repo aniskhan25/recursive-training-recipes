@@ -10,6 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from utils.metrics import acceptance_rate, accuracy, entropy_from_probs, pseudo_label_error
+from utils.progress import progress
 
 
 @dataclass
@@ -29,12 +30,13 @@ def run_self_training(
     threshold: float,
     use_soft: bool,
     max_unlabeled_per_round: int,
+    use_progress: bool = False,
 ) -> SelfTrainResult:
     model.to(device)
     ce = nn.CrossEntropyLoss()
     history: List[Dict[str, float]] = []
 
-    for r in range(rounds):
+    for r in progress(range(rounds), enabled=use_progress, desc="self-train rounds"):
         model.train()
         for images, labels in labeled_loader:
             images, labels = images.to(device), labels.to(device)

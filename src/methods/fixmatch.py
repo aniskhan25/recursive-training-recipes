@@ -10,6 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from utils.metrics import acceptance_rate, accuracy, entropy_from_probs
+from utils.progress import progress
 
 
 @dataclass
@@ -28,12 +29,13 @@ def run_fixmatch(
     epochs: int,
     tau: float,
     lambda_u: float,
+    use_progress: bool = False,
 ) -> FixMatchResult:
     model.to(device)
     ce = nn.CrossEntropyLoss()
     history: List[Dict[str, float]] = []
 
-    for epoch in range(epochs):
+    for epoch in progress(range(epochs), enabled=use_progress, desc="fixmatch epochs"):
         model.train()
         labeled_iter = iter(labeled_loader)
         for (u_images, _), _ in zip(unlabeled_loader, range(len(unlabeled_loader))):

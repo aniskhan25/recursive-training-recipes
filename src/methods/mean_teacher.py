@@ -10,6 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from utils.metrics import acceptance_rate, accuracy, teacher_student_disagreement
+from utils.progress import progress
 
 
 @dataclass
@@ -41,13 +42,14 @@ def run_mean_teacher(
     ema_decay: float,
     lambda_u: float,
     warmup_epochs: int = 0,
+    use_progress: bool = False,
 ) -> MeanTeacherResult:
     student.to(device)
     teacher.to(device)
     ce = nn.CrossEntropyLoss()
     history: List[Dict[str, float]] = []
 
-    for epoch in range(epochs):
+    for epoch in progress(range(epochs), enabled=use_progress, desc="mean teacher epochs"):
         student.train()
         labeled_iter = iter(labeled_loader)
         for (u_images, _), _ in zip(unlabeled_loader, range(len(unlabeled_loader))):
