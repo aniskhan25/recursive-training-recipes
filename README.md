@@ -28,3 +28,19 @@ Outputs go to `outputs/logs/` (CSV) and `outputs/figures/` (PNG).
 - 06_fixmatch_cifar10_fewlabels.ipynb
 - 07_mean_teacher_cifar10_fewlabels.ipynb
 - 08_hybrid_teacher_threshold.ipynb
+
+## Appendix: Running notebooks on Puhti (Slurm)
+
+The script `run_notebook_array.sbatch` can run all notebooks or a single one via a job array.
+
+Run all:
+
+```bash
+sbatch run_notebook_array.sbatch
+```
+
+Run a single notebook:
+
+```bash
+sbatch --export=NB_NAME=07_mean_teacher_cifar10_fewlabels run_notebook_array.sbatch
+```
