@@ -9,6 +9,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from utils.progress import progress
+
 
 @dataclass
 class TrainResult:
@@ -22,12 +24,13 @@ def run_supervised(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     epochs: int,
+    use_progress: bool = False,
 ) -> TrainResult:
     model.to(device)
     ce = nn.CrossEntropyLoss()
     history: List[Dict[str, float]] = []
 
-    for epoch in range(epochs):
+    for epoch in progress(range(epochs), enabled=use_progress, desc="supervised epochs"):
         model.train()
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
