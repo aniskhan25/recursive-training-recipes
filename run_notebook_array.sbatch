@@ -14,9 +14,6 @@
 
 set -euo pipefail
 
-source /etc/profile.d/modules.sh
-module purge
-module load pytorch
 source /scratch/project_2014553/anisrahm/venvs/marimo/bin/activate
 export PYTHONPATH=/scratch/project_2014553/anisrahm/recursive-training-recipes/src:${PYTHONPATH:-}
 
