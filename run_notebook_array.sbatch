@@ -31,6 +31,9 @@ NOTEBOOKS=(
 
 if [ -n "${NB_NAME:-}" ]; then
   NB="$NB_NAME"
+  if [ "${SLURM_ARRAY_TASK_ID:-0}" -ne 0 ]; then
+    exit 0
+  fi
 else
   NB="${NOTEBOOKS[$SLURM_ARRAY_TASK_ID]}"
 fi
