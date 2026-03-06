@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from eval.eval_classification import evaluate_classification
 from utils.progress import progress
 
 
@@ -32,6 +33,8 @@ def run_supervised(
 
     for epoch in progress(range(epochs), enabled=use_progress, desc="supervised epochs"):
         model.train()
+        train_loss_sum = 0.0
+        train_count = 0
         for images, labels in labeled_loader:
             images, labels = images.to(device), labels.to(device)
             logits = model(images)
@@ -39,18 +42,20 @@ def run_supervised(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            train_loss_sum += float(loss.item()) * labels.numel()
+            train_count += labels.numel()
 
-        model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for images, labels in test_loader:
-                images, labels = images.to(device), labels.to(device)
-                pred = model(images).argmax(dim=1)
-                correct += (pred == labels).sum().item()
-                total += labels.numel()
-        test_acc = correct / total if total else 0.0
+        val = evaluate_classification(model, test_loader, device)
+        train_loss = train_loss_sum / float(train_count) if train_count else 0.0
 
-        history.append({"epoch": float(epoch), "test_acc": test_acc})
+        history.append(
+            {
+                "epoch": float(epoch),
+                "train_loss": train_loss,
+                "val_loss": val.loss,
+                "val_accuracy": val.accuracy,
+                "test_acc": val.accuracy,
+            }
+        )
 
     return SupervisedResult(history=history)

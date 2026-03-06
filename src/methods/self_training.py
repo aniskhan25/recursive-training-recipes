@@ -9,8 +9,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from utils.metrics import acceptance_rate, accuracy, entropy_from_probs, pseudo_label_error
+from eval.eval_classification import evaluate_classification, evaluate_pseudo_labels
 from utils.progress import progress
+from utils.schedules import linear_rampup
 
 
 @dataclass
@@ -30,6 +31,8 @@ def run_self_training(
     threshold: float,
     use_soft: bool,
     max_unlabeled_per_round: int,
+    threshold_start: float | None = None,
+    rampup_rounds: int = 0,
     use_progress: bool = False,
 ) -> SelfTrainResult:
     model.to(device)
@@ -37,7 +40,15 @@ def run_self_training(
     history: List[Dict[str, float]] = []
 
     for r in progress(range(rounds), enabled=use_progress, desc="self-train rounds"):
+        if threshold_start is not None and rampup_rounds > 0:
+            alpha = linear_rampup(r + 1, rampup_rounds)
+            threshold_t = threshold_start + (threshold - threshold_start) * alpha
+        else:
+            threshold_t = threshold
+
         model.train()
+        sup_loss_sum = 0.0
+        sup_count = 0
         for images, labels in labeled_loader:
             images, labels = images.to(device), labels.to(device)
             logits = model(images)
@@ -45,11 +56,12 @@ def run_self_training(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            sup_loss_sum += float(loss.item()) * labels.numel()
+            sup_count += labels.numel()
 
         model.eval()
         pseudo_images = []
         pseudo_targets = []
-        pseudo_truth = []
         confidences = []
         with torch.no_grad():
             for images, labels in unlabeled_eval:
@@ -57,11 +69,10 @@ def run_self_training(
                 logits = model(images)
                 probs = torch.softmax(logits, dim=1)
                 conf, pred = torch.max(probs, dim=1)
-                mask = conf >= threshold if threshold > 0 else torch.ones_like(conf, dtype=torch.bool)
+                mask = conf >= threshold_t if threshold_t > 0 else torch.ones_like(conf, dtype=torch.bool)
                 if mask.any():
                     pseudo_images.append(images[mask].cpu())
                     pseudo_targets.append(pred[mask].cpu())
-                    pseudo_truth.append(labels[mask].cpu())
                     confidences.append(conf[mask].cpu())
                 if sum(x.size(0) for x in pseudo_images) >= max_unlabeled_per_round:
                     break
@@ -69,20 +80,14 @@ def run_self_training(
         if pseudo_images:
             Xp = torch.cat(pseudo_images)
             yp = torch.cat(pseudo_targets)
-            yt = torch.cat(pseudo_truth)
             conf = torch.cat(confidences)
-            e_t = pseudo_label_error(yt, yp)
-            acc_pseudo = accuracy(yt, yp)
-            accept = float(Xp.size(0)) / float(len(unlabeled_eval.dataset))
         else:
             Xp = torch.empty(0)
             yp = torch.empty(0, dtype=torch.long)
-            yt = torch.empty(0, dtype=torch.long)
             conf = torch.empty(0)
-            e_t = 0.0
-            acc_pseudo = 0.0
-            accept = 0.0
 
+        unsup_loss_total = 0.0
+        unsup_steps = 0
         if Xp.numel() > 0:
             model.train()
             for _ in range(1):
@@ -100,25 +105,34 @@ def run_self_training(
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                unsup_loss_total += float(loss.item())
+                unsup_steps += 1
 
-        model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for images, labels in test_loader:
-                images, labels = images.to(device), labels.to(device)
-                pred = model(images).argmax(dim=1)
-                correct += (pred == labels).sum().item()
-                total += labels.numel()
-        test_acc = correct / total if total else 0.0
+        val = evaluate_classification(model, test_loader, device)
+        pseudo_eval = evaluate_pseudo_labels(model, unlabeled_eval, device, threshold_t)
+        train_sup_loss = sup_loss_sum / float(sup_count) if sup_count else 0.0
+        train_unsup_loss = unsup_loss_total / float(unsup_steps) if unsup_steps else 0.0
+        train_loss = train_sup_loss + train_unsup_loss
+        state_error_e_t = 1.0 - pseudo_eval.pseudo_label_accuracy if pseudo_eval.pseudo_label_fraction > 0 else 0.0
 
         history.append(
             {
                 "round": float(r),
-                "test_acc": test_acc,
-                "pseudo_label_acc": acc_pseudo,
-                "accept_rate": accept,
-                "state_error_e_t": e_t,
+                "threshold": float(threshold_t),
+                "train_loss": train_loss,
+                "supervised_loss": train_sup_loss,
+                "unsupervised_loss": train_unsup_loss,
+                "val_loss": val.loss,
+                "val_accuracy": val.accuracy,
+                "test_acc": val.accuracy,
+                "pseudo_label_fraction": pseudo_eval.pseudo_label_fraction,
+                "pseudo_label_accuracy": pseudo_eval.pseudo_label_accuracy,
+                "mean_confidence": pseudo_eval.mean_confidence,
+                "entropy": pseudo_eval.entropy,
+                # Backward-compatible aliases used by existing notebooks.
+                "pseudo_label_acc": pseudo_eval.pseudo_label_accuracy,
+                "accept_rate": pseudo_eval.pseudo_label_fraction,
+                "state_error_e_t": state_error_e_t,
                 "avg_conf_selected": float(conf.mean().item()) if conf.numel() > 0 else 0.0,
             }
         )

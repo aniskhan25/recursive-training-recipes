@@ -11,7 +11,7 @@ from utils.seed import set_seed
 from utils.logging import CSVLogger
 from utils.plots import plot_series, savefig
 from data.synthetic import make_overlapping_gmm
-from data.mnist import get_mnist_ssl
+from data.mnist import get_mnist_ssl, get_mnist_ssl_twoview
 from data.cifar10 import get_cifar10_ssl
 from methods.em_gmm import run_em
 from methods.self_training import run_self_training
@@ -37,6 +37,7 @@ def main() -> None:
 
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg.get("seed", 0))
+    print(cfg)
 
     out_dir = Path(cfg.get("output_dir", "outputs"))
     logs_dir = out_dir / "logs"
@@ -72,8 +73,10 @@ def main() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    use_twoview = exp in {"fixmatch_cifar10", "mean_teacher_cifar10", "hybrid_teacher_threshold"}
     if cfg["data"]["dataset"] == "mnist":
-        loaders = get_mnist_ssl(
+        loader_fn = get_mnist_ssl_twoview if use_twoview else get_mnist_ssl
+        loaders = loader_fn(
             cfg["data"]["data_dir"],
             cfg["data"]["labeled_per_class"],
             cfg["data"]["batch_size"],
@@ -105,6 +108,8 @@ def main() -> None:
             threshold=cfg["train"]["threshold"],
             use_soft=cfg["train"]["use_soft"],
             max_unlabeled_per_round=cfg["train"]["max_unlabeled_per_round"],
+            threshold_start=cfg["train"].get("threshold_start"),
+            rampup_rounds=cfg["train"].get("rampup_rounds", 0),
         )
         logger = CSVLogger(logs_dir, "selftrain")
         for row in result.history:
@@ -126,6 +131,8 @@ def main() -> None:
             epochs=cfg["train"]["epochs"],
             tau=cfg["train"]["tau"],
             lambda_u=cfg["train"]["lambda_u"],
+            tau_start=cfg["train"].get("tau_start"),
+            rampup_epochs=cfg["train"].get("rampup_epochs", 0),
         )
         logger = CSVLogger(logs_dir, "fixmatch")
         for row in result.history:
@@ -148,6 +155,9 @@ def main() -> None:
             epochs=cfg["train"]["epochs"],
             ema_decay=cfg["train"]["ema_decay"],
             lambda_u=cfg["train"]["lambda_u"],
+            unlabeled_eval=loaders.unlabeled_eval,
+            pseudo_threshold=cfg["train"].get("pseudo_threshold", 0.95),
+            warmup_epochs=cfg["train"].get("rampup_epochs", 0),
         )
         logger = CSVLogger(logs_dir, "mean_teacher")
         for row in result.history:
@@ -172,6 +182,8 @@ def main() -> None:
             ema_decay=cfg["train"]["ema_decay"],
             tau=cfg["train"]["tau"],
             lambda_u=cfg["train"]["lambda_u"],
+            tau_start=cfg["train"].get("tau_start"),
+            rampup_epochs=cfg["train"].get("rampup_epochs", 0),
         )
         logger = CSVLogger(logs_dir, "hybrid")
         for row in result.history:

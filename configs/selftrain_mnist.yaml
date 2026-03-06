@@ -19,6 +19,8 @@ train:
   lr: 0.001
   weight_decay: 0.0005
   threshold: 0.0
+  threshold_start:
   use_soft: false
   max_unlabeled_per_round: 20000
+  rampup_rounds: 0
   log_every: 1

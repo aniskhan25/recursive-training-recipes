@@ -38,7 +38,13 @@ def get_cifar10_ssl(
     labeled_idx, unlabeled_idx = split_labeled_unlabeled(y, labeled_per_class, rng)
 
     labeled_ds = CIFAR10(root, train=True, download=True, transform=cifar_weak())
-    unlabeled_ds = CIFAR10(root, train=True, download=True, transform=cifar_strong())
+    # FixMatch-style setup: weak view for pseudo-labeling, strong view for consistency loss.
+    unlabeled_ds = CIFAR10(
+        root,
+        train=True,
+        download=True,
+        transform=TwoCropsTransform(cifar_weak(), cifar_strong()),
+    )
 
     labeled = DataLoader(Subset(labeled_ds, labeled_idx), batch_size=batch_size, shuffle=True, num_workers=num_workers)
     unlabeled = DataLoader(Subset(unlabeled_ds, unlabeled_idx), batch_size=batch_size, shuffle=True, num_workers=num_workers)

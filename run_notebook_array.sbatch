@@ -10,7 +10,7 @@
 #SBATCH --job-name=nb
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
-#SBATCH --array=0-7
+#SBATCH --array=0-8
 
 set -euo pipefail
 
@@ -27,6 +27,7 @@ NOTEBOOKS=(
   "06_fixmatch_cifar10_fewlabels"
   "07_mean_teacher_cifar10_fewlabels"
   "08_hybrid_teacher_threshold"
+  "09_ssl_method_comparison"
 )
 
 if [ -n "${NB_NAME:-}" ]; then

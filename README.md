@@ -1,6 +1,20 @@
 # Supplemental_1: PyTorch SSL demos (config-driven)
 
-This folder contains industry-grade, still educational SSL demos aligned to the recursive training tutorial. Every notebook is hypothesis-driven and logs state evolution (pseudo-label accuracy, acceptance rate, calibration proxy, disagreement, and explicit state error where possible).
+These notebooks implement minimal educational versions of semi-supervised learning methods.
+They prioritize conceptual clarity over exact paper-faithful reproduction.
+
+The goal is to demonstrate recursive training mechanics and stabilization patterns, not to
+reproduce full SSL benchmarks or claim SOTA performance.
+
+Every notebook follows the same structure:
+1. Concept
+2. Why this method exists
+3. Algorithm intuition
+4. Minimal implementation
+5. Experiment
+6. Diagnostics
+7. Key takeaways
+8. Failure modes
 
 ## Quick start
 
@@ -18,6 +32,11 @@ python scripts/run.py --config configs/selftrain_mnist.yaml
 
 Outputs go to `outputs/logs/` (CSV) and `outputs/figures/` (PNG).
 
+Core logged metrics are standardized across methods:
+`train_loss`, `val_loss`, `val_accuracy`, `pseudo_label_fraction`,
+`pseudo_label_accuracy`, `mean_confidence`, and `entropy`
+(plus method-specific diagnostics like `unsupervised_loss`, `teacher_student_disagreement`, and `ema_gap`).
+
 ## Notebook order
 
 - 01_baseline_supervised.ipynb
@@ -28,6 +47,7 @@ Outputs go to `outputs/logs/` (CSV) and `outputs/figures/` (PNG).
 - 06_fixmatch_cifar10_fewlabels.ipynb
 - 07_mean_teacher_cifar10_fewlabels.ipynb
 - 08_hybrid_teacher_threshold.ipynb
+- 09_ssl_method_comparison.ipynb
 
 ## Appendix: Running notebooks on Puhti (Slurm)
 
