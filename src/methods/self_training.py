@@ -113,7 +113,11 @@ def run_self_training(
         train_sup_loss = sup_loss_sum / float(sup_count) if sup_count else 0.0
         train_unsup_loss = unsup_loss_total / float(unsup_steps) if unsup_steps else 0.0
         train_loss = train_sup_loss + train_unsup_loss
-        state_error_e_t = 1.0 - pseudo_eval.pseudo_label_accuracy if pseudo_eval.pseudo_label_fraction > 0 else 0.0
+        state_error_e_t = (
+            1.0 - pseudo_eval.pseudo_label_accuracy
+            if pseudo_eval.pseudo_label_fraction > 0
+            else float("nan")
+        )
 
         history.append(
             {
